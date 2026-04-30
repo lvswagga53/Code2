@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Martingale Ladder Journal</title>
+
+<style>
+body {
+    font-family: Arial;
+    background: #0f0f0f;
+    color: white;
+    text-align: center;
+}
+
+.container {
+    max-width: 450px;
+    margin: auto;
+}
+
+input, button {
+    padding: 10px;
+    margin: 6px;
+    width: 85%;
+    font-size: 16px;
+}
+
+button { cursor: pointer; }
+
+.win { background: #27ae60; }
+.loss { background: #c0392b; }
+
+.box {
+    background: #1c1c1c;
+    padding: 10px;
+    margin-top: 10px;
+    border-radius: 8px;
+    text-align: left;
+    max-height: 200px;
+    overflow-y: auto;
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+    <h2>Martingale Journal</h2>
+
+    <input type="number" id="balance" placeholder="Account Balance ($)">
+    <input type="number" id="risk" placeholder="Risk % per cycle">
+    <input type="number" id="payout" placeholder="Payout %">
+
+    <button onclick="generate()">Generate 5-Step Ladder</button>
+
+    <div class="box" id="ladder"></div>
+
+    <h3>Trade Actions</h3>
+
+    <button class="win" onclick="addTrade('Win')">Win</button>
+    <button class="loss" onclick="addTrade('Loss')">Loss</button>
+    <button onclick="resetAll()">Reset</button>
+
+    <div class="box">
+        <b>Streaks</b><br>
+        Current Win Streak: <span id="winStreak">0</span><br>
+        Current Loss Streak: <span id="lossStreak">0</span><br>
+        Best Win Streak: <span id="bestWin">0</span><br>
+        Best Loss Streak: <span id="bestLoss">0</span>
+    </div>
+
+    <div class="box">
+        <b>Trade History</b>
+        <div id="history"></div>
+    </div>
+</div>
+
+<script>
+let state = JSON.parse(localStorage.getItem("martingale_data")) || {
+    winStreak: 0,
+    lossStreak: 0,
+    bestWin: 0,
+    bestLoss: 0,
+    history: []
+};
+
+function save() {
+    localStorage.setItem("martingale_data", JSON.stringify(state));
+}
+
+function generate() {
+    let balance = parseFloat(document.getElementById("balance").value);
+    let risk = parseFloat(document.getElementById("risk").value);
+    let payout = parseFloat(document.getElementById("payout").value);
+
+    let base = balance * (risk / 100);
+    let loss = 0;
+    let html = "<b>5-Step Ladder:</b><br><br>";
+
+    for (let i = 1; i <= 5; i++) {
+        let trade = (loss + base) / (payout / 100);
+        html += `Step ${i}: $${trade.toFixed(2)}<br>`;
+        loss += trade;
+    }
+
+    document.getElementById("ladder").innerHTML = html;
+}
+
+function addTrade(result) {
+    let time = new Date().toLocaleTimeString();
+
+    state.history.unshift(`${time} - ${result}`);
+
+    if (result === "Win") {
+        state.winStreak++;
+        state.lossStreak = 0;
+    } else {
+        state.lossStreak++;
+        state.winStreak = 0;
+    }
+
+    if (state.winStreak > state.bestWin) state.bestWin = state.winStreak;
+    if (state.lossStreak > state.bestLoss) state.bestLoss = state.lossStreak;
+
+    updateUI();
+    save();
+}
+
+function updateUI() {
+    winStreak.innerText = state.winStreak;
+    lossStreak.innerText = state.lossStreak;
+    bestWin.innerText = state.bestWin;
+    bestLoss.innerText = state.bestLoss;
+
+    history.innerHTML = state.history.slice(0, 20).map(h => `<div>${h}</div>`).join("");
+}
+
+function resetAll() {
+    localStorage.removeItem("martingale_data");
+    location.reload();
+}
+
+updateUI();
+</script>
+
+</body>
+</html>
